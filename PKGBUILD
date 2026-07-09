@@ -167,9 +167,10 @@ package() {
     _buildtype=Debug
   fi
 
+  current_dir=$(pwd)
   cd "${srcdir}"
   tar -cz -f skia.tar.gz skia/*
-  cd ..
+  cd "${current_dir}"
 
   install -d "${pkgdir}"/${MINGW_PREFIX}/lib
   install -Dm755 out/${_buildtype}-${MSYSTEM}/*.a "${pkgdir}"/${MINGW_PREFIX}/lib/
