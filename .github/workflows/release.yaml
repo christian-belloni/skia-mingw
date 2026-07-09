@@ -51,7 +51,17 @@ jobs:
         dos2unix PKGBUILD
         updpkgsums
         MINGW_ARCH=${{ matrix.sys }} makepkg-mingw --cleanbuild --syncdeps --force --noconfirm
+
+    - name: 'Patch sources'
+      if: ${{ matrix.sys }} == 'ucrt64'
+      run: 
+        ./prepare_srcs.sh
     
+    - name: 'Remove srcs'
+      if: ${{ matrix.sys }} != 'ucrt64'
+      run:
+        rm skia.tar.gz
+
     - name: 'Release'
       uses: softprops/action-gh-release@v3
       if: github.ref_type == 'tag'
