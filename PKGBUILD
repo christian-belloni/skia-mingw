@@ -172,9 +172,11 @@ package() {
   tar -cz -f skia.tar.gz skia/*
   cd "${current_dir}"
 
+  cp "${srcdir}"/skia.tar.gz .
+
   install -d "${pkgdir}"/${MINGW_PREFIX}/lib
   install -Dm755 out/${_buildtype}-${MSYSTEM}/*.a "${pkgdir}"/${MINGW_PREFIX}/lib/
-  install -Dm755 out/${_buildtype}-${MSYSTEM}/skia_defines "${pkgdir}"/${MINGW_PREFIX}/lib/
+  install -Dm755 out/${_buildtype}-${MSYSTEM}/skia_defines.txt "${pkgdir}"/${MINGW_PREFIX}/lib/
   install -Dm755 "${srcdir}"/icu/common/icudtl.dat "${pkgdir}"/${MINGW_PREFIX}/lib/
 
   install -d "${pkgdir}"/${MINGW_PREFIX}/include/skia
