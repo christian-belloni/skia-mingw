@@ -108,8 +108,7 @@ prepare() {
   cp -r "${srcdir}"/vulkan* third_party/externals/
   cp -r "${srcdir}"/icu third_party/externals/
 
-  # python3 tools/git-sync-deps -h
-  # python3 bin/fetch-ninja
+  cp extract_defines.sh "${srcdir}"/
 
   # gn is expected to be in skia/bin
   cp ${MINGW_PREFIX}/bin/gn.exe bin/gn.exe
@@ -156,7 +155,7 @@ build() {
     skia_use_libwebp_encode=true
     skia_use_libwebp_decode=true"
 
-  ./extract_defines.sh
+  "${srcdir}"/extract_defines.sh
   mkdir -p out/${_buildtype}-${MSYSTEM}
   mv skia_defines.txt out/${_buildtype}-${MSYSTEM}/
   ninja -C out/${_buildtype}-${MSYSTEM}
@@ -169,6 +168,10 @@ package() {
   if check_option "debug" "y"; then
     _buildtype=Debug
   fi
+
+  cd "${srcdir}"
+  tar -cz -f skia.tar.gz skia/*
+  cd ..
 
   install -d "${pkgdir}"/${MINGW_PREFIX}/lib
   install -Dm755 out/${_buildtype}-${MSYSTEM}/*.a "${pkgdir}"/${MINGW_PREFIX}/lib/
