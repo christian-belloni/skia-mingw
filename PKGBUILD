@@ -46,8 +46,8 @@ source=("${_realname}.tar.gz::https://github.com/google/skia/archive/${_commit}.
         "0007-Reland-Make-SkPath-immutable-on-GN-build.patch"
         "0008-dwrite.patch"
         "0009-allow-opengl-aarch64.patch"
-	"0010-support-vulkan.patch"
-	"extract_defines.sh"
+	      "0010-support-vulkan.patch"
+	      "extract_defines.sh"
         "skia.pc")
 sha256sums=('63eee9235414e0171dec6b47d54a5b55057c4b38fce4514bdfc8003b5713a761'
             '967acb8025f9af3f1a5d4d4e9ab671a65fd9b1a52e93081683f84167077c979b'
@@ -107,8 +107,6 @@ prepare() {
   mkdir -p third_party/externals/
   cp -r "${srcdir}"/vulkan* third_party/externals/
   cp -r "${srcdir}"/icu third_party/externals/
-
-  cp extract_defines.sh "${srcdir}"/
 
   # gn is expected to be in skia/bin
   cp ${MINGW_PREFIX}/bin/gn.exe bin/gn.exe
