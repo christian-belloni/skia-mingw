@@ -1,0 +1,39 @@
+diff --git a/BUILD.gn b/BUILD.gn
+index dbe9d50ad0..b4962d00cf 100644
+--- a/BUILD.gn
++++ b/BUILD.gn
+@@ -1257,7 +1257,7 @@ optional("pdf_jpeg_helpers") {
+ }
+ 
+ optional("xps") {
+-  enabled = skia_use_xps && is_win
++  enabled = skia_use_xps && is_msvc
+   public_defines = [ "SK_SUPPORT_XPS" ]
+   deps = [
+     ":clipstack_utils",
+diff --git a/gn/skia.gni b/gn/skia.gni
+index 254a8001a1..f36ca5f975 100644
+--- a/gn/skia.gni
++++ b/gn/skia.gni
+@@ -18,7 +18,7 @@ declare_args() {
+   skia_enable_android_utils = is_skia_dev_build
+   skia_enable_discrete_gpu = true
+   skia_enable_fontmgr_empty = false
+-  skia_enable_fontmgr_win = is_win
++  skia_enable_fontmgr_win = is_msvc
+   skia_enable_gpu_debug_layers = is_skia_dev_build && is_debug
+   skia_enable_optimize_size = false
+   skia_enable_pdf = !is_wasm
+diff --git a/src/gpu/vk/vulkanmemoryallocator/BUILD.gn b/src/gpu/vk/vulkanmemoryallocator/BUILD.gn
+index 5a2d0586d2..a08e796c79 100644
+--- a/src/gpu/vk/vulkanmemoryallocator/BUILD.gn
++++ b/src/gpu/vk/vulkanmemoryallocator/BUILD.gn
+@@ -31,7 +31,7 @@ source_set("vulkanmemoryallocator") {
+   ]
+ 
+   # Warnings are just noise if we're not maintaining the code.
+-  if (is_win) {
++  if (is_msvc) {
+     cflags = [ "/w" ]
+   } else {
+     cflags = [ "-w" ]
