@@ -8,7 +8,7 @@ apply_patch_with_msg() {
 }
 
 tar xvf skia.tar.gz
-# rm skia.tar.gz
+rm skia.tar.gz
 
 mv skia-da51f0d60ea2b14e845a823dc11b405dbeef42d8 skia
 
