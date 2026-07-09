@@ -36,6 +36,7 @@ source=("${_realname}.tar.gz::https://github.com/google/skia/archive/${_commit}.
 	"bare-clones/vulkan-headers::git+https://chromium.googlesource.com/external/github.com/KhronosGroup/Vulkan-Headers#commit=8d6039a455a7ecc7d2a592ff97f62db4e59b70bf"
 	"bare-clones/vulkan-tools::git+https://chromium.googlesource.com/external/github.com/KhronosGroup/Vulkan-Tools#commit=6d586e9a4f0d5ffdef862149adaf1ec6b3130182"
 	"bare-clones/vulkan-utility-libraries::git+https://chromium.googlesource.com/external/github.com/KhronosGroup/Vulkan-Utility-Libraries#commit=c0e15b2c46f9ae2314925cbbe9d97ed6ea8a717d"
+	"bare-clones/icu::git+https://chromium.googlesource.com/chromium/deps/icu.git#commit=364118a1d9da24bb5b770ac3d762ac144d6da5a4"
         "0001-add-pkgconfig-support.patch"
         "0002-add-mingw-toolchain-skia.patch"
         "0003-fix-dwrite-function-mingw.patch"
@@ -54,6 +55,7 @@ sha256sums=('63eee9235414e0171dec6b47d54a5b55057c4b38fce4514bdfc8003b5713a761'
             '7452187a48f61636911e62ca95a3c92e137037e5198ca3608cb07e11f5243c01'
             '5ab9b9f5d3ee4b7a20437af2c738c520261925479e306ea50b13ce4165291eed'
             'dddf6bf1b5b2e350789188e0e57b6b6073ff1f550e7eb3be54168473d142ef1c'
+            '357b71c5341d247d2a68dbd800de31d912f47aeb5b94dc484ca9833eb02dafbc'
             '7440572487b8bc33ac7a8445de0cc4148e0d47b538ba46f4952ba8cc97e0fa52'
             '227a070cf5b02a5e265749df14551228ec841f926d922666b0ec96948dc96e16'
             '107526f649a31ff87033608cb1f55c0922d6bd40fa3c8c769ed0320b9230cde6'
@@ -165,6 +167,7 @@ package() {
 
   install -d "${pkgdir}"/${MINGW_PREFIX}/lib
   install -Dm755 out/${_buildtype}-${MSYSTEM}/*.a "${pkgdir}"/${MINGW_PREFIX}/lib/
+  install -Dm755 "${srcdir}"/icu/common/icudtl.dat "${pkgdir}"/${MINGW_PREFIX}/lib/
 
   install -d "${pkgdir}"/${MINGW_PREFIX}/include/skia
   cp --parents `find ./include -name \*.h` "$pkgdir"/${MINGW_PREFIX}/include/skia
