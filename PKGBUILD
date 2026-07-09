@@ -47,6 +47,7 @@ source=("${_realname}.tar.gz::https://github.com/google/skia/archive/${_commit}.
         "0008-dwrite.patch"
         "0009-allow-opengl-aarch64.patch"
 	"0010-support-vulkan.patch"
+	"extract_defines.txt"
         "skia.pc")
 sha256sums=('63eee9235414e0171dec6b47d54a5b55057c4b38fce4514bdfc8003b5713a761'
             '967acb8025f9af3f1a5d4d4e9ab671a65fd9b1a52e93081683f84167077c979b'
@@ -105,6 +106,7 @@ prepare() {
 
   mkdir -p third_party/externals/
   cp -r "${srcdir}"/vulkan* third_party/externals/
+  cp -r "${srcdir}"/icu third_party/externals/
 
   # python3 tools/git-sync-deps -h
   # python3 bin/fetch-ninja
@@ -154,6 +156,9 @@ build() {
     skia_use_libwebp_encode=true
     skia_use_libwebp_decode=true"
 
+  ./extract_defines.sh
+  mkdir -p out/${_buildtype}-${MSYSTEM}
+  mv skia_defines.txt out/${_buildtype}-${MSYSTEM}/
   ninja -C out/${_buildtype}-${MSYSTEM}
 }
 
@@ -167,6 +172,7 @@ package() {
 
   install -d "${pkgdir}"/${MINGW_PREFIX}/lib
   install -Dm755 out/${_buildtype}-${MSYSTEM}/*.a "${pkgdir}"/${MINGW_PREFIX}/lib/
+  install -Dm755 out/${_buildtype}-${MSYSTEM}/skia_defines "${pkgdir}"/${MINGW_PREFIX}/lib/
   install -Dm755 "${srcdir}"/icu/common/icudtl.dat "${pkgdir}"/${MINGW_PREFIX}/lib/
 
   install -d "${pkgdir}"/${MINGW_PREFIX}/include/skia

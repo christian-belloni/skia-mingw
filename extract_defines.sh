@@ -1,0 +1,1 @@
+find . -name '*.ninja' -exec cat {} \; | grep 'defines =' | sed -e 's/defines = //g' | sed -e 's/ /\n/g' | sort -u -o skia_defines.txt
