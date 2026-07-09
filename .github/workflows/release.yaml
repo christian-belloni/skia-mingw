@@ -44,4 +44,5 @@ jobs:
     - name: '🚧 Build Skia'
       run: |
         dos2unix PKGBUILD
+        updpkgsums
         MINGW_ARCH=${{ matrix.sys }} makepkg-mingw --cleanbuild --syncdeps --force --noconfirm
