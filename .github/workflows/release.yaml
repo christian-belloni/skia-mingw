@@ -35,11 +35,13 @@ jobs:
         install: >-
           git
           make
+          dos2unix
         pacboy: >-
           toolchain:p
           cmake:p
           ninja:p
 
-    - name: '🚧 Build TOOL'
+    - name: '🚧 Build Skia'
       run: |
+        dos2unix PKGBUILD
         MINGW_ARCH=${{ matrix.sys }} makepkg-mingw --cleanbuild --syncdeps --force --noconfirm
