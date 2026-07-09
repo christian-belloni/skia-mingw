@@ -137,7 +137,7 @@ build() {
     cxx=\"${CXX}\"
     is_debug=${_debug}
     is_official_build=${_official}
-    is_component_build=true
+    is_component_build=false
     skia_use_dng_sdk=false
     skia_use_wuffs=false
     skia_use_xps=false
@@ -163,11 +163,8 @@ package() {
     _buildtype=Debug
   fi
 
-  install -d "${pkgdir}"/${MINGW_PREFIX}/bin
-  install -Dm755 out/${_buildtype}-${MSYSTEM}/*.dll "${pkgdir}"/${MINGW_PREFIX}/bin/
-
   install -d "${pkgdir}"/${MINGW_PREFIX}/lib
-  install -Dm755 out/${_buildtype}-${MSYSTEM}/*.dll.a "${pkgdir}"/${MINGW_PREFIX}/lib/
+  install -Dm755 out/${_buildtype}-${MSYSTEM}/*.a "${pkgdir}"/${MINGW_PREFIX}/lib/
 
   install -d "${pkgdir}"/${MINGW_PREFIX}/include/skia
   cp --parents `find ./include -name \*.h` "$pkgdir"/${MINGW_PREFIX}/include/skia

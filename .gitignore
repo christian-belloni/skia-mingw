@@ -1,2 +1,5 @@
 bare-clones/
 *.tar.gz
+src/
+pkg/
+*.tar.zst
