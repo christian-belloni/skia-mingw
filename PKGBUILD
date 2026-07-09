@@ -1,6 +1,7 @@
 # Maintainer: Naveen M K <naveen521kk at gmail.com>
 # Contributor: Raed Rizqie <raed.rizqie@gmail.com>
 
+
 _realname=skia
 pkgbase=mingw-w64-${_realname}
 pkgname="${MINGW_PACKAGE_PREFIX}-${_realname}"
