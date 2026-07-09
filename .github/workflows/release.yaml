@@ -37,6 +37,7 @@ jobs:
           git
           make
           dos2unix
+          patch
         pacboy: >-
           toolchain:p
           cmake:p
