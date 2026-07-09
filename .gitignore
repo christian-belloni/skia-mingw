@@ -3,3 +3,4 @@ bare-clones/
 src/
 pkg/
 *.tar.zst
+skia_defines.txt
