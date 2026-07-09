@@ -54,7 +54,7 @@ jobs:
 
     - name: 'Patch sources'
       run: 
-        ./prepare_srcs.sh
+        ./prepare_srcs.sh ${{ matrix.sys }}
     
 
     - name: 'Release'

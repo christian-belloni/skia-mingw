@@ -29,4 +29,4 @@ patch -R -Nbp1 -i "${srcdir}/0007-Reland-Make-SkPath-immutable-on-GN-build.patch
 
 cd ..
 
-tar -cvz -f skia.tar.gz skia/
+tar -cvz -f skia-$1.tar.gz skia/
