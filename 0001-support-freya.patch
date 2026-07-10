@@ -486,7 +486,7 @@ index ff1adaa9a7..53693f7905 100644
  #  else
  #    define SK_NEVER_INLINE SK_ATTRIBUTE(noinline)
 diff --git a/modules/skcms/BUILD.gn b/modules/skcms/BUILD.gn
-index 5d037a94c9..d7f8510b28 100644
+index 5d037a94c9..fcf8bbb3b0 100644
 --- a/modules/skcms/BUILD.gn
 +++ b/modules/skcms/BUILD.gn
 @@ -33,7 +33,7 @@ template("arch") {
@@ -530,7 +530,7 @@ index 5d037a94c9..d7f8510b28 100644
    cflags = []
    if (!is_win || is_clang) {
 -    cflags += [ "-std=c11" ]
-+    cflags_c += [ "-std=c11" ]
++    cflags_c = [ "-std=c11" ]
    }
    if (target_cpu != "x64" || target_os == "android") {
      defines = [
