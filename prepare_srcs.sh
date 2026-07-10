@@ -7,11 +7,7 @@ apply_patch_with_msg() {
   done
 }
 
-cd skia
-
-apply_patch_with_msg \
-    0001-support-freya.patch
-
-cd ..
+rm -rf skia
+cp -r src/skia .
 
 tar -cvz -f skia-$1.tar.gz skia/
