@@ -1,0 +1,1151 @@
+diff --git a/BUILD.gn b/BUILD.gn
+index a9e5e7895a..7eb9eafa93 100644
+--- a/BUILD.gn
++++ b/BUILD.gn
+@@ -171,7 +171,7 @@ is_loong64 = current_cpu == "loong64"
+ opts("ml3") {
+   enabled = is_x86
+   sources = skia_opts.ml3_sources
+-  if (is_win) {
++  if (is_msvc) {
+     cflags = [ "/arch:AVX2" ]
+   } else {
+     # TODO(kjlubick) use -march=x86-64-v3
+@@ -182,7 +182,7 @@ opts("ml3") {
+ opts("ml4") {
+   enabled = is_x86
+   sources = skia_opts.ml4_sources
+-  if (is_win) {
++  if (is_msvc) {
+     cflags = [ "/arch:AVX512" ]
+   } else {
+     # TODO(kjlubick) use -march=x86-64-v4
+@@ -477,7 +477,7 @@ optional("fontmgr_win") {
+   sources = skia_ports_windows_fonts_sources
+   if (skia_dwritecore_sdk != "") {
+     defines = [ "DWRITE_CORE" ]
+-    if (is_win && is_clang) {
++    if (is_msvc && is_clang) {
+       # Clang complains about these headers, so mark them as system. These
+       # headers are hiding SDK headers of the same name, which are also
+       # included as system headers, so these need to go first in the cflags
+@@ -498,7 +498,7 @@ optional("fontmgr_win_gdi") {
+   public_defines = [ "SK_FONTMGR_GDI_AVAILABLE" ]
+   public = skia_ports_windows_fonts_public
+   sources = skia_ports_fonthost_win_sources
+-  libs = [ "Gdi32.lib" ]
++  libs = [ "gdi32", "ole32" ]
+ }
+ 
+ if (skia_lex) {
+@@ -1002,9 +1002,7 @@ optional("gpu") {
+         "src/gpu/ganesh/gl/win/GrGLMakeNativeInterface_win.cpp",
+         "src/gpu/ganesh/gl/win/GrGLMakeWinInterface.cpp",
+       ]
+-      if (target_cpu != "arm64") {
+-        libs += [ "OpenGL32.lib" ]
+-      }
++      libs += [ "opengl32" ]
+     } else {
+       sources += [ "src/gpu/ganesh/gl/GrGLMakeNativeInterface_none.cpp" ]
+     }
+@@ -1030,9 +1028,9 @@ optional("gpu") {
+       public_defines += [ "SK_ENABLE_D3D_DEBUG_LAYER" ]
+     }
+     libs += [
+-      "d3d12.lib",
+-      "dxgi.lib",
+-      "d3dcompiler.lib",
++      "d3d12",
++      "dxgi",
++      "d3dcompiler",
+     ]
+   }
+ 
+@@ -1270,7 +1268,7 @@ optional("pdf_jpeg_helpers") {
+ }
+ 
+ optional("xps") {
+-  enabled = skia_use_xps && is_win
++  enabled = skia_use_xps && is_msvc
+   public_defines = [ "SK_SUPPORT_XPS" ]
+   deps = [
+     ":clipstack_utils",
+@@ -1991,15 +1989,15 @@ skia_component("skia") {
+                  "src/ports/SkLog_win.cpp",
+                ]
+     libs += [
+-      "Ole32.lib",
+-      "OleAut32.lib",
++      "ole32",
++      "oleaut32",
+     ]
+ 
+     if (!skia_enable_winuwp) {
+       libs += [
+-        "FontSub.lib",
+-        "User32.lib",
+-        "Usp10.lib",
++        "fontsub",
++        "user32",
++        "usp10",
+       ]
+     }
+   } else {
+@@ -2055,6 +2053,30 @@ skia_component("skia") {
+     ]
+   }
+ 
++  if (is_mingw) {
++    if (is_component_build && !skia_enable_svg) {
++      import("modules/skresources/skresources.gni")
++      import("modules/skshaper/skshaper.gni")
++      import("modules/svg/svg.gni")
++
++      include_dirs = [
++        "modules/svg/include",
++        "modules/skshaper/include",
++        "modules/skresources/include",
++      ]
++      public += skia_shaper_public
++      public += skia_skresources_public
++      public += skia_svg_public
++      sources += skia_shaper_primitive_sources
++      sources += skia_skresources_sources
++      sources += skia_svg_sources
++      defines += [
++        "SK_ENABLE_SVG",
++        "SK_SHAPER_PRIMITIVE_AVAILABLE",
++      ]
++    }
++  }
++
+   if (skia_enable_spirv_validation) {
+     deps += [ "//third_party/externals/spirv-tools:spvtools_val" ]
+     defines += [ "SK_ENABLE_SPIRV_VALIDATION" ]
+@@ -2179,7 +2201,7 @@ if (((skia_enable_fontmgr_fontconfig && skia_use_freetype) ||
+       "tools/fiddle/examples.cpp",
+       "tools/fiddle/examples.h",
+     ]
+-    if (is_win) {
++    if (is_msvc) {
+       cflags = [
+         "/wd4756",  # Overflow in constant arithmetic
+         "/wd4305",  # truncation from 'double' to 'float'
+@@ -2382,10 +2404,8 @@ if (skia_enable_tools) {
+             "tools/ganesh/gl/win/SkWGL.h",
+             "tools/ganesh/gl/win/SkWGL_win.cpp",
+           ]
+-          libs += [ "Gdi32.lib" ]
+-          if (target_cpu != "arm64") {
+-            libs += [ "OpenGL32.lib" ]
+-          }
++          libs += [ "gdi32" ]
++          libs += [ "opengl32" ]
+         } else if (is_wasm) {
+           # TODO: replace with webgl test context
+           sources +=
+@@ -2650,7 +2670,7 @@ if (skia_enable_tools) {
+       sources += [ "tools/AutoreleasePool.mm" ]
+       frameworks += [ "Foundation.framework" ]
+     } else if (is_win && !skia_enable_winuwp) {
+-      libs += [ "DbgHelp.lib" ]
++      libs += [ "dbghelp" ]
+     }
+ 
+     defines = []
+diff --git a/gn/BUILDCONFIG.gn b/gn/BUILDCONFIG.gn
+index 2f12f9f852..2a7232902f 100644
+--- a/gn/BUILDCONFIG.gn
++++ b/gn/BUILDCONFIG.gn
+@@ -70,6 +70,8 @@ is_linux = current_os == "linux"
+ is_mac = current_os == "mac"
+ is_wasm = current_os == "wasm"
+ is_win = current_os == "win"
++is_mingw = is_win && (cxx == "g++" || cxx == "clang++")
++is_msvc = is_win && !is_mingw
+ 
+ # Dawn has references to fuchsia, but Skia's GN rules do not
+ is_fuchsia = false
+@@ -128,7 +130,7 @@ if (is_android) {
+   }
+ }
+ 
+-if (target_os == "win") {
++if (is_msvc) {
+   # By default we look for 2017 (Enterprise, Pro, and Community), then 2015. If MSVC is installed in a
+   # non-default location, you can set win_vc to inform us where it is.
+ 
+@@ -139,7 +141,7 @@ if (target_os == "win") {
+                         # directory.
+ }
+ 
+-if (target_os == "win") {
++if (is_msvc) {
+   if (win_toolchain_version == "") {
+     win_toolchain_version = exec_script("//gn/highest_version_dir.py",
+                                         [
+@@ -236,7 +238,7 @@ if (!is_official_build) {
+       [ "//gn/skia:warnings_for_public_headers" ]
+ }
+ 
+-if (is_win) {
++if (is_msvc) {
+   # Windows tool chain
+   set_default_toolchain("//gn/toolchain:msvc")
+   default_toolchain_name = "msvc"
+diff --git a/gn/skia.gni b/gn/skia.gni
+index 442a4b4ba7..0fedc17695 100644
+--- a/gn/skia.gni
++++ b/gn/skia.gni
+@@ -22,7 +22,7 @@ declare_args() {
+   skia_enable_android_utils = is_skia_dev_build
+   skia_enable_discrete_gpu = true
+   skia_enable_fontmgr_empty = false
+-  skia_enable_fontmgr_win = is_win
++  skia_enable_fontmgr_win = is_msvc
+   skia_enable_gpu_debug_layers = is_skia_dev_build && is_debug
+   skia_enable_optimize_size = false
+   skia_enable_pdf = !is_canvaskit
+diff --git a/gn/skia/BUILD.gn b/gn/skia/BUILD.gn
+index 6352e9f4f9..da0f9c5963 100644
+--- a/gn/skia/BUILD.gn
++++ b/gn/skia/BUILD.gn
+@@ -59,12 +59,12 @@ config("default") {
+   # Disable warnings about unknown attributes.
+   # (These unknown attribute warnings are on by default, so we don't make
+   # disabling them part of :warnings, as some targets remove :warnings.)
+-  if (is_win && !is_clang) {
++  if (is_msvc && !is_clang) {
+     cflags += [
+       "/wd5030",
+       "/wd5051",
+     ]
+-  } else {
++  } else if (!is_mingw){
+     cflags += [ "-Wno-attributes" ]
+   }
+ 
+@@ -74,7 +74,7 @@ config("default") {
+     cflags += [ "-ffp-contract=off" ]
+   }
+ 
+-  if (is_win) {
++  if (is_msvc) {
+     if (is_clang && current_cpu == "arm64") {
+       cflags += [ "--target=arm64-windows" ]
+     }
+@@ -120,10 +120,29 @@ config("default") {
+       "$win_vc/Tools/MSVC/$win_toolchain_version/lib/$current_cpu",
+     ]
+   } else {
+-    cflags += [
+-      "-fPIC",
+-      "-fvisibility=hidden",
+-    ]
++    if (is_mingw) {
++      if (target_cpu == "arm64") {
++        cflags += [
++          "-march=armv8-a+simd+fp",
++        ]
++      } else {
++        cflags += [
++          "-mavx2",
++          "-mavx512f",
++          "-mf16c",
++          "-mfma",
++        ]
++      }
++      cflags += [
++        "-fpermissive",
++        "-fvisibility=default",
++      ]
++    } else {
++      cflags += [
++        "-fPIC",
++        "-fvisibility=hidden",
++      ]
++    }
+     cflags_cc += [ "-fvisibility-inlines-hidden" ]
+     cflags_cc += [ "-std=c++20" ]
+   }
+@@ -159,6 +178,20 @@ config("default") {
+     libs += [ malloc ]
+   }
+ 
++  if (is_mingw) {
++    defines += [
++      "_CRT_SECURE_NO_WARNINGS",
++      "WIN32_LEAN_AND_MEAN",
++      "NOMINMAX",
++    ]
++    if (!is_clang) {
++      cflags += [
++        "-Wno-attributes",
++        "-Wno-stringop-overflow",
++      ]
++    }
++  }
++
+   if (is_android) {
+     cflags += [ "--sysroot=$ndk/toolchains/llvm/prebuilt/$ndk_host/sysroot" ]
+     ldflags += [ "-static-libstdc++" ]
+@@ -166,7 +199,7 @@ config("default") {
+ 
+   if (show_includes) {
+     assert(is_clang, "show_includes requires clang to build.")
+-    if (is_win) {
++    if (is_msvc) {
+       cflags += [
+         "/clang:-H",
+         "/clang:-fshow-skipped-includes",
+@@ -391,7 +424,7 @@ config("recover_pointer_overflow") {
+ 
+ config("no_exceptions") {
+   # Exceptions are disabled by default on Windows.  (Use /EHsc to enable them.)
+-  if (!is_win) {
++  if (!is_msvc) {
+     cflags_cc = [ "-fno-exceptions" ]
+     cflags_objcc = cflags_cc
+   }
+@@ -404,14 +437,14 @@ config("warnings") {
+   cflags_objcc = []
+ 
+   if (werror) {
+-    if (is_win) {
++    if (is_msvc) {
+       cflags += [ "/WX" ]
+     } else {
+       cflags += [ "-Werror" ]
+     }
+   }
+ 
+-  if (is_win) {
++  if (is_msvc) {
+     cflags += [
+       "/W3",  # Turn on lots of warnings.
+ 
+@@ -613,7 +646,7 @@ config("warnings") {
+   }
+ 
+   # !is_clang is a proxy for gcc.
+-  if (!is_clang && !is_win) {
++  if (!is_clang && !is_msvc) {
+     cflags += [
+       "-Wno-unreachable-code",  # Causes false positives in old GCC; removed
+                                 # from modern GCC entirely
+@@ -657,7 +690,7 @@ config("debug_symbols") {
+       "-gline-tables-only",
+       "-funwind-tables",  # Helps make in-process backtraces fuller.
+     ]
+-  } else if (is_win) {
++  } else if (is_msvc) {
+     cflags = [ "/Z7" ]
+     if (is_clang) {
+       cflags += [ "-gcodeview-ghash" ]
+@@ -677,7 +710,7 @@ config("no_rtti") {
+   # -fsanitize=vptr requires RTTI which is enabled as a part of
+   # -fsanitize=undefined
+   if (sanitize != "ASAN") {
+-    if (is_win) {
++    if (is_msvc) {
+       cflags_cc = [ "/GR-" ]
+     } else {
+       cflags_cc = [ "-fno-rtti" ]
+@@ -688,7 +721,7 @@ config("no_rtti") {
+ 
+ config("optimize") {
+   ldflags = []
+-  if (is_win) {
++  if (is_msvc) {
+     cflags = [
+       "/O2",
+       "/Zc:inline",
+@@ -703,7 +736,7 @@ config("optimize") {
+   } else {
+     if (skia_enable_optimize_size) {
+       cflags = [ "-Oz" ]
+-      if (!is_android) {
++      if (!is_android && !is_mingw) {
+         cflags += [
+           # Clang 15 turns PIE (Position-indendendent Executable) on by default.
+           "-fno-PIE",
+@@ -743,12 +776,12 @@ config("trivial_abi") {
+ #
+ # As of 2024, only GCC is aggressive about strict aliasing. Clang isn't.
+ config("strict_aliasing") {
+-  if (!is_win) {
++  if (!is_win || is_mingw) {
+     cflags = [ "-fstrict-aliasing" ]
+   }
+ }
+ config("no_strict_aliasing") {
+-  if (!is_win) {
++  if (!is_win || is_mingw) {
+     cflags = [ "-fno-strict-aliasing" ]
+   }
+ }
+@@ -766,12 +799,14 @@ config("executable") {
+       "-rdynamic",
+       "-Wl,-rpath,\$ORIGIN",
+     ]
+-  } else if (is_win) {
++  } else if (is_msvc) {
+     ldflags = [
+       "/SUBSYSTEM:CONSOLE",  # Quiet "no subsystem specified; CONSOLE assumed".
+       "/INCREMENTAL:NO",  # Quiet warnings about failing to incrementally link
+                           # by never trying to.
+     ]
++  } else if (is_mingw) {
++    ldflags = [ "-mconsole" ]
+   }
+ }
+ 
+diff --git a/gn/toolchain/BUILD.gn b/gn/toolchain/BUILD.gn
+index c60628edc4..57c7c17bd3 100644
+--- a/gn/toolchain/BUILD.gn
++++ b/gn/toolchain/BUILD.gn
+@@ -46,7 +46,7 @@ declare_args() {
+ }
+ 
+ # For 'shell' see https://ninja-build.org/manual.html#ref_rule_command
+-if (host_os == "win") {
++if (is_msvc) {
+   shell = "cmd.exe /c "
+   stamp = "$shell echo >"
+ } else {
+@@ -312,8 +312,7 @@ template("gcc_like_toolchain") {
+       } else {
+         rspfile = "{{output}}.rsp"
+         rspfile_content = "{{inputs}}"
+-        rm_py = rebase_path("../rm.py")
+-        command = "$shell python3 \"$rm_py\" \"{{output}}\" && $ar rcs {{output}} @$rspfile"
++        command = "$ar rcs {{output}} @$rspfile"
+       }
+ 
+       outputs =
+@@ -336,6 +335,8 @@ template("gcc_like_toolchain") {
+       rpath = "-Wl,-soname,$soname"
+       if (current_os == "mac" || current_os == "ios" || current_os == "tvos") {
+         rpath = "-Wl,-install_name,@rpath/$soname"
++      } else if (is_mingw) {
++        rpath = ""  # For PE/COFF the soname argument has no effect
+       }
+ 
+       rspfile = "{{output}}.rsp"
+@@ -354,18 +355,25 @@ template("gcc_like_toolchain") {
+         _end_group = ""
+       }
+ 
+-      _emcc_flags = ""
+-      if (current_os == "wasm") {
+-        _emcc_flags = "-sSIDE_MODULE=1"
++      # _emcc_flags = ""
++      # if (current_os == "wasm") {
++      #   _emcc_flags = "-sSIDE_MODULE=1"
++      # }
++
++      soname_flags = ""
++      if (is_mingw) {
++        soname_flags = "-Wl,--out-implib=$soname.a"
+       }
+ 
+-      command = "$link -shared {{ldflags}} $_start_group @$rspfile {{frameworks}} {{solibs}} $_end_group {{libs}} $rpath $_emcc_flags -o {{output}}"
++      command = "$link -shared $soname_flags {{ldflags}} $_start_group @$rspfile {{frameworks}} {{solibs}} {{libs}} $_end_group $rpath -o {{output}}"
+       outputs = [ "{{root_out_dir}}/$soname" ]
+       output_prefix = "lib"
+       if (current_os == "mac" || current_os == "ios" || current_os == "tvos") {
+         default_output_extension = ".dylib"
+       } else if (current_os == "wasm" && !is_canvaskit) {
+         default_output_extension = ".wasm.so"
++      } else if (is_mingw) {
++        default_output_extension = ".dll"
+       } else {
+         default_output_extension = ".so"
+       }
+diff --git a/include/private/base/SkAttributes.h b/include/private/base/SkAttributes.h
+index ff1adaa9a7..53693f7905 100644
+--- a/include/private/base/SkAttributes.h
++++ b/include/private/base/SkAttributes.h
+@@ -24,7 +24,7 @@
+  *     SK_ALWAYS_INLINE void someMethod() { ... }   // should always be inlined
+  */
+ #if !defined(SK_ALWAYS_INLINE)
+-#  if defined(SK_BUILD_FOR_WIN)
++#  if defined(_MSC_VER)
+ #    define SK_ALWAYS_INLINE __forceinline
+ #  else
+ #    define SK_ALWAYS_INLINE SK_ATTRIBUTE(always_inline) inline
+@@ -36,7 +36,7 @@
+  * you can use SK_NEVER_INLINE to prevent inlining.
+  */
+ #if !defined(SK_NEVER_INLINE)
+-#  if defined(SK_BUILD_FOR_WIN)
++#  if defined(_MSC_VER)
+ #    define SK_NEVER_INLINE __declspec(noinline)
+ #  else
+ #    define SK_NEVER_INLINE SK_ATTRIBUTE(noinline)
+diff --git a/modules/skcms/BUILD.gn b/modules/skcms/BUILD.gn
+index 5d037a94c9..d7f8510b28 100644
+--- a/modules/skcms/BUILD.gn
++++ b/modules/skcms/BUILD.gn
+@@ -33,7 +33,7 @@ template("arch") {
+ arch("skcms_TransformHsw") {
+   enabled = current_cpu == "x64" && target_os != "android"
+   sources = skcms_TransformHsw
+-  if (is_win) {
++  if (is_msvc) {
+     if (is_clang) {
+       cflags = [
+         "/clang:-mavx2",
+@@ -43,6 +43,8 @@ arch("skcms_TransformHsw") {
+     } else {
+       cflags = [ "/arch:AVX2" ]
+     }
++  } else if (is_mingw) { 
++    cflags = [ "-march=haswell" ]
+   } else {
+     cflags = [
+       "-mavx2",
+@@ -55,7 +57,7 @@ arch("skcms_TransformHsw") {
+ arch("skcms_TransformSkx") {
+   enabled = current_cpu == "x64" && target_os != "android"
+   sources = skcms_TransformSkx
+-  if (is_win) {
++  if (is_msvc) {
+     if (is_clang) {
+       cflags = [
+         "/clang:-mavx512f",
+@@ -68,6 +70,8 @@ arch("skcms_TransformSkx") {
+     } else {
+       cflags = [ "/arch:AVX512" ]
+     }
++  } else if (is_mingw) {
++    cflags = [ "-march=skylake-avx512" ]
+   } else {
+     cflags = [
+       "-mavx512f",
+@@ -83,7 +87,7 @@ arch("skcms_TransformSkx") {
+ static_library("skcms") {
+   cflags = []
+   if (!is_win || is_clang) {
+-    cflags += [ "-std=c11" ]
++    cflags_c += [ "-std=c11" ]
+   }
+   if (target_cpu != "x64" || target_os == "android") {
+     defines = [
+diff --git a/modules/skcms/src/skcms_internals.h b/modules/skcms/src/skcms_internals.h
+index 02aa7b77a5..8a3e51794e 100644
+--- a/modules/skcms/src/skcms_internals.h
++++ b/modules/skcms/src/skcms_internals.h
+@@ -56,7 +56,7 @@ extern "C" {
+                                                  && !defined(_WIN32) && !defined(__SYMBIAN32__)
+             #define SKCMS_HAS_MUSTTAIL 1
+         #endif
+-    #elif defined(__GNUC__) && !defined(SKCMS_HAS_MUSTTAIL)
++    #elif defined(__GNUC__) && !defined(SKCMS_HAS_MUSTTAIL) && !defined(_WIN32)
+         // GCC on riscv64 does not support our tail call functions
+         // cf. https://gcc.gnu.org/bugzilla/show_bug.cgi?id=121784
+         #if __has_cpp_attribute(clang::musttail) && !defined(__riscv)
+@@ -64,7 +64,7 @@ extern "C" {
+         #else
+             #define SKCMS_HAS_MUSTTAIL 0
+         #endif
+-    #elif !defined(__clang__) && !defined(SKCMS_HAS_MUSTTAIL)
++    #elif !defined(__clang__) && !defined(SKCMS_HAS_MUSTTAIL) && !defined(_WIN32)
+         #if __has_cpp_attribute(clang::musttail)
+             #define SKCMS_HAS_MUSTTAIL 1
+         #else
+diff --git a/src/core/SkRasterPipeline.h b/src/core/SkRasterPipeline.h
+index 2a2fd2cc42..e90fe267ef 100644
+--- a/src/core/SkRasterPipeline.h
++++ b/src/core/SkRasterPipeline.h
+@@ -26,7 +26,7 @@ enum SkColorType : int;
+ struct SkImageInfo;
+ struct skcms_TransferFunction;
+ 
+-#if __has_cpp_attribute(clang::musttail) && !defined(__EMSCRIPTEN__) && !defined(SK_CPU_ARM32) && \
++#if __has_cpp_attribute(clang::musttail) && defined(__clang__) && !defined(__EMSCRIPTEN__) && !defined(SK_CPU_ARM32) && \
+         !defined(SK_CPU_LOONGARCH) && !defined(SK_CPU_PPC) && \
+         !(defined(_WIN32) && defined(SK_BUILD_FOR_ANDROID_FRAMEWORK))
+     // [[clang::musttail]] is disabled for the Android version of Skia running on Windows as it
+diff --git a/src/gpu/vk/vulkanmemoryallocator/BUILD.gn b/src/gpu/vk/vulkanmemoryallocator/BUILD.gn
+index 23c3c662e1..fb15877b36 100644
+--- a/src/gpu/vk/vulkanmemoryallocator/BUILD.gn
++++ b/src/gpu/vk/vulkanmemoryallocator/BUILD.gn
+@@ -31,7 +31,7 @@ source_set("vulkanmemoryallocator") {
+   ]
+ 
+   # Warnings are just noise if we're not maintaining the code.
+-  if (is_win) {
++  if (is_msvc) {
+     cflags = [ "/w" ]
+   } else {
+     cflags = [ "-w" ]
+diff --git a/src/ports/SkScalerContext_win_dw.cpp b/src/ports/SkScalerContext_win_dw.cpp
+index 68eb71e26f..4acc19b4ca 100644
+--- a/src/ports/SkScalerContext_win_dw.cpp
++++ b/src/ports/SkScalerContext_win_dw.cpp
+@@ -50,6 +50,10 @@
+ #include <dwrite_1.h>
+ #include <dwrite_3.h>
+ 
++#if defined(__MINGW32__)
++#define GetGlyphImageFormats GetGlyphImageFormats_
++#endif
++
+ namespace {
+ static inline const constexpr bool kSkShowTextBlitCoverage = false;
+ 
+@@ -623,11 +627,11 @@ bool SkScalerContext_DW::drawColorV1Paint(SkCanvas& canvas,
+     auto drawChildren = [&](uint32_t childCount) -> bool {
+         if (childCount != 0) {
+             DWRITE_PAINT_ELEMENT childElement;
+-            HRB(reader.MoveToFirstChild(&childElement));
++            HRB(reader.MoveToFirstChild(&childElement, sizeof(DWRITE_PAINT_ELEMENT)));
+             this->drawColorV1Paint(canvas, reader, childElement);
+ 
+             for (uint32_t i = 1; i < childCount; i++) {
+-                HRB(reader.MoveToNextSibling(&childElement));
++                HRB(reader.MoveToNextSibling(&childElement, sizeof(DWRITE_PAINT_ELEMENT)));
+                 this->drawColorV1Paint(canvas, reader, childElement);
+             }
+ 
+@@ -1190,13 +1194,13 @@ bool SkScalerContext_DW::drawColorV1Paint(SkCanvas& canvas,
+         DWRITE_PAINT_ELEMENT sourceElement;
+         DWRITE_PAINT_ELEMENT backdropElement;
+ 
+-        HRBM(reader.MoveToFirstChild(&sourceElement), "Could not move to child.");
+-        HRBM(reader.MoveToNextSibling(&backdropElement), "Could not move to sibiling.");
++        HRBM(reader.MoveToFirstChild(&sourceElement, sizeof(DWRITE_PAINT_ELEMENT)), "Could not move to child.");
++        HRBM(reader.MoveToNextSibling(&backdropElement, sizeof(DWRITE_PAINT_ELEMENT)), "Could not move to sibiling.");
+         canvas.saveLayer(nullptr, nullptr);
+         this->drawColorV1Paint(canvas, reader, backdropElement);
+ 
+         HRBM(reader.MoveToParent(), "Could not move to parent.");
+-        HRBM(reader.MoveToFirstChild(&sourceElement), "Could not move to child.");
++        HRBM(reader.MoveToFirstChild(&sourceElement, sizeof(DWRITE_PAINT_ELEMENT)), "Could not move to child.");
+         canvas.saveLayer(nullptr, &blendModePaint);
+         this->drawColorV1Paint(canvas, reader, sourceElement);
+ 
+@@ -1227,7 +1231,7 @@ bool SkScalerContext_DW::drawColorV1Image(const SkGlyph& glyph, SkCanvas& canvas
+     DWRITE_PAINT_ELEMENT paintElement;
+     D2D_RECT_F clipBox;
+     DWRITE_PAINT_ATTRIBUTES attributes;
+-    HRBM(paintReader->SetCurrentGlyph(glyphIndex, &paintElement, &clipBox, &attributes),
++    HRBM(paintReader->SetCurrentGlyph(glyphIndex, &paintElement, sizeof(DWRITE_PAINT_ELEMENT), &clipBox, &attributes),
+          "Could not set current glyph.");
+ 
+     if (paintElement.paintType == DWRITE_PAINT_TYPE_NONE) {
+@@ -1256,7 +1260,8 @@ bool SkScalerContext_DW::drawColorV1Image(const SkGlyph& glyph, SkCanvas& canvas
+ 
+     // The DirectWrite interface returns resolved colors if these are provided.
+     // Indexes and alphas are reported but there is no reason to duplicate the color calculation.
+-    paintReader->SetTextColor(dw_color_from(SkColor4f::FromColor(fRec.fForegroundColor)));
++    auto dwColor = dw_color_from(SkColor4f::FromColor(fRec.fForegroundColor));
++    paintReader->SetTextColor(&dwColor);
+     paintReader->SetCustomColorPalette(typeface->fDWPalette.get(), typeface->fPaletteEntryCount);
+ 
+     return this->drawColorV1Paint(canvas, *paintReader, paintElement);
+@@ -1293,11 +1298,11 @@ bool SkScalerContext_DW::generateColorV1PaintBounds(
+             return true;
+         }
+         DWRITE_PAINT_ELEMENT childElement;
+-        HRB(reader.MoveToFirstChild(&childElement));
++        HRB(reader.MoveToFirstChild(&childElement, sizeof(DWRITE_PAINT_ELEMENT)));
+         this->generateColorV1PaintBounds(ctm, bounds, reader, childElement);
+ 
+         for (uint32_t i = 1; i < childCount; ++i) {
+-            HRB(reader.MoveToNextSibling(&childElement));
++            HRB(reader.MoveToNextSibling(&childElement, sizeof(DWRITE_PAINT_ELEMENT)));
+             this->generateColorV1PaintBounds(ctm, bounds, reader, childElement);
+         }
+ 
+@@ -1443,7 +1448,7 @@ bool SkScalerContext_DW::generateColorV1Metrics(const SkGlyph& glyph, SkRect* bo
+     D2D_RECT_F clipBox;
+     DWRITE_PAINT_ATTRIBUTES attributes;
+     // If the glyph is not color this will succeed but return paintType NONE.
+-    HRBM(paintReader->SetCurrentGlyph(glyphIndex, &paintElement, &clipBox, &attributes),
++    HRBM(paintReader->SetCurrentGlyph(glyphIndex, &paintElement, sizeof(DWRITE_PAINT_ELEMENT), &clipBox, &attributes),
+          "Could not set the current glyph.");
+ 
+     if (paintElement.paintType == DWRITE_PAINT_TYPE_NONE) {
+diff --git a/third_party/harfbuzz/BUILD.gn b/third_party/harfbuzz/BUILD.gn
+index c22db95cb3..69328252da 100644
+--- a/third_party/harfbuzz/BUILD.gn
++++ b/third_party/harfbuzz/BUILD.gn
+@@ -3,6 +3,7 @@
+ # Use of this source code is governed by a BSD-style license that can be
+ # found in the LICENSE file.
+ 
++import("../../gn/pkg_config.gni")
+ import("../../gn/skia.gni")
+ import("../third_party.gni")
+ 
+@@ -11,13 +12,15 @@ declare_args() {
+ }
+ 
+ if (skia_use_system_harfbuzz) {
+-  system("harfbuzz") {
+-    include_dirs = [ "/usr/include/harfbuzz" ]
+-    libs = [ "harfbuzz" ]
++  pkg_config("system_harfbuzz") {
++    packages = [ "harfbuzz" ]
+     if (skia_pdf_subset_harfbuzz) {
+-      libs += [ "harfbuzz-subset" ]
++      packages += [ "harfbuzz-subset" ]
+     }
+   }
++  source_set("harfbuzz") {
++      public_configs = [ ":system_harfbuzz" ]
++  }
+ } else {
+   third_party("harfbuzz") {
+     _src = "../externals/harfbuzz/src"
+diff --git a/third_party/icu/BUILD.gn b/third_party/icu/BUILD.gn
+index 5abbf5cdff..f4ecc4cafc 100644
+--- a/third_party/icu/BUILD.gn
++++ b/third_party/icu/BUILD.gn
+@@ -3,13 +3,49 @@
+ # Use of this source code is governed by a BSD-style license that can be
+ # found in the LICENSE file.
+ 
++import("../../gn/pkg_config.gni")
+ import("../../gn/skia.gni")
+ import("../third_party.gni")
+ import("icu.gni")
+ 
+ if (skia_use_system_icu) {
+-  system("icu") {
+-    libs = [ "icuuc" ]
++  pkg_config("system_icui18n") {
++    packages = [ "icu-i18n" ]
++  }
++  pkg_config("system_icuuc") {
++    packages = [ "icu-uc" ]
++  }
++
++  group("icu") {
++    public_deps = [
++      ":icui18n",
++      ":icuuc",
++    ]
++  }
++
++  config("icu_config") {
++    defines = [ "U_USING_ICU_NAMESPACE=0" ]
++    if (is_mingw) {
++      defines += [ "UCHAR_TYPE=wchar_t" ]
++    } else {
++      defines += [ "UCHAR_TYPE=uint16_t" ]
++    }
++  }
++
++  source_set("icui18n") {
++    public_configs = [
++      ":icu_config",
++      ":system_icui18n",
++    ]
++  }
++  source_set("icuuc") {
++    public_configs = [
++      ":icu_config",
++      ":system_icuuc",
++    ]
++  }
++  source_set("icudata") {
++    public_configs = [ ":icu_config" ]
+     defines = [ "U_USING_ICU_NAMESPACE=0" ]
+   }
+ } else {
+diff --git a/third_party/third_party.gni b/third_party/third_party.gni
+index cbcd16cf38..207380f7e1 100644
+--- a/third_party/third_party.gni
++++ b/third_party/third_party.gni
+@@ -13,7 +13,7 @@ template("third_party_config") {
+     if (enabled) {
+       forward_variables_from(invoker, "*", [ "include_dirs" ])
+       cflags = []
+-      if (is_win) {
++      if (is_msvc) {
+         include_dirs = invoker.include_dirs
+         if (is_clang) {
+           foreach(dir, invoker.include_dirs) {
+@@ -92,7 +92,7 @@ template("third_party") {
+       if (!defined(cflags)) {
+         cflags = []
+       }
+-      if (is_win) {
++      if (is_msvc) {
+         cflags += [ "/w" ]
+       } else {
+         cflags += [ "-w" ]
+diff --git a/gn/pkg-config.py b/gn/pkg-config.py
+new file mode 100644
+index 0000000000..588fa32889
+--- /dev/null
++++ b/gn/pkg-config.py
+@@ -0,0 +1,253 @@
++#!/usr/bin/env python3
++# Copyright 2013 The Chromium Authors
++# Use of this source code is governed by a BSD-style license that can be
++# found in the LICENSE file.
++
++
++import json
++import os
++import subprocess
++import sys
++import re
++from optparse import OptionParser
++
++# This script runs pkg-config, optionally filtering out some results, and
++# returns the result.
++#
++# The result will be [ <includes>, <cflags>, <libs>, <lib_dirs>, <ldflags> ]
++# where each member is itself a list of strings.
++#
++# You can filter out matches using "-v <regexp>" where all results from
++# pkgconfig matching the given regular expression will be ignored. You can
++# specify more than one regular expression my specifying "-v" more than once.
++#
++# You can specify a sysroot using "-s <sysroot>" where sysroot is the absolute
++# system path to the sysroot used for compiling. This script will attempt to
++# generate correct paths for the sysroot.
++#
++# When using a sysroot, you must also specify the architecture via
++# "-a <arch>" where arch is either "x86" or "x64".
++#
++# CrOS systemroots place pkgconfig files at <systemroot>/usr/share/pkgconfig
++# and one of <systemroot>/usr/lib/pkgconfig or <systemroot>/usr/lib64/pkgconfig
++# depending on whether the systemroot is for a 32 or 64 bit architecture. They
++# specify the 'lib' or 'lib64' of the pkgconfig path by defining the
++# 'system_libdir' variable in the args.gn file. pkg_config.gni communicates this
++# variable to this script with the "--system_libdir <system_libdir>" flag. If no
++# flag is provided, then pkgconfig files are assumed to come from
++# <systemroot>/usr/lib/pkgconfig.
++#
++# Additionally, you can specify the option --atleast-version. This will skip
++# the normal outputting of a dictionary and instead print true or false,
++# depending on the return value of pkg-config for the given package.
++
++
++def SetConfigPath(options):
++  """Set the PKG_CONFIG_LIBDIR environment variable.
++
++  This takes into account any sysroot and architecture specification from the
++  options on the given command line.
++  """
++
++  sysroot = options.sysroot
++  assert sysroot
++
++  # Compute the library path name based on the architecture.
++  arch = options.arch
++  if sysroot and not arch:
++    print("You must specify an architecture via -a if using a sysroot.")
++    sys.exit(1)
++
++  libdir = sysroot + '/usr/' + options.system_libdir + '/pkgconfig'
++  libdir += ':' + sysroot + '/usr/share/pkgconfig'
++  os.environ['PKG_CONFIG_LIBDIR'] = libdir
++  return libdir
++
++
++def GetPkgConfigPrefixToStrip(options, args):
++  """Returns the prefix from pkg-config where packages are installed.
++
++  This returned prefix is the one that should be stripped from the beginning of
++  directory names to take into account sysroots.
++  """
++  # Some sysroots, like the Chromium OS ones, may generate paths that are not
++  # relative to the sysroot. For example,
++  # /path/to/chroot/build/x86-generic/usr/lib/pkgconfig/pkg.pc may have all
++  # paths relative to /path/to/chroot (i.e. prefix=/build/x86-generic/usr)
++  # instead of relative to /path/to/chroot/build/x86-generic (i.e prefix=/usr).
++  # To support this correctly, it's necessary to extract the prefix to strip
++  # from pkg-config's |prefix| variable.
++  prefix = subprocess.check_output([options.pkg_config,
++      "--variable=prefix"] + args, env=os.environ).decode('utf-8')
++  if prefix[:4] == '/usr':
++    return prefix[4:]
++  return prefix
++
++
++def MatchesAnyRegexp(flag, list_of_regexps):
++  """Returns true if the first argument matches any regular expression in the
++  given list."""
++  for regexp in list_of_regexps:
++    if regexp.search(flag) != None:
++      return True
++  return False
++
++
++def RewritePath(path, strip_prefix, sysroot):
++  """Rewrites a path by stripping the prefix and prepending the sysroot."""
++  if os.path.isabs(path) and not path.startswith(sysroot):
++    if path.startswith(strip_prefix):
++      path = path[len(strip_prefix):]
++    path = path.lstrip('/')
++    return os.path.join(sysroot, path)
++  else:
++    return path
++
++
++def main():
++  # If this is run on non-Linux platforms, just return nothing and indicate
++  # success. This allows us to "kind of emulate" a Linux build from other
++  # platforms.
++  if sys.platform not in ["linux", "win32"]:
++    print("[[],[],[],[],[]]")
++    return 0
++
++  parser = OptionParser()
++  parser.add_option('-d', '--debug', action='store_true')
++  parser.add_option('-p', action='store', dest='pkg_config', type='string',
++                    default='pkg-config')
++  parser.add_option('-v', action='append', dest='strip_out', type='string')
++  parser.add_option('-s', action='store', dest='sysroot', type='string')
++  parser.add_option('-a', action='store', dest='arch', type='string')
++  parser.add_option('--system_libdir', action='store', dest='system_libdir',
++                    type='string', default='lib')
++  parser.add_option('--atleast-version', action='store',
++                    dest='atleast_version', type='string')
++  parser.add_option('--libdir', action='store_true', dest='libdir')
++  parser.add_option('--dridriverdir', action='store_true', dest='dridriverdir')
++  parser.add_option('--version-as-components', action='store_true',
++                    dest='version_as_components')
++  (options, args) = parser.parse_args()
++
++  # Make a list of regular expressions to strip out.
++  strip_out = []
++  if options.strip_out != None:
++    for regexp in options.strip_out:
++      strip_out.append(re.compile(regexp))
++
++  if options.sysroot:
++    libdir = SetConfigPath(options)
++    if options.debug:
++      sys.stderr.write('PKG_CONFIG_LIBDIR=%s\n' % libdir)
++    prefix = GetPkgConfigPrefixToStrip(options, args)
++  else:
++    prefix = ''
++
++  if options.atleast_version:
++    # When asking for the return value, just run pkg-config and print the return
++    # value, no need to do other work.
++    if not subprocess.call([options.pkg_config,
++                            "--atleast-version=" + options.atleast_version] +
++                            args):
++      print("true")
++    else:
++      print("false")
++    return 0
++
++  if options.version_as_components:
++    cmd = [options.pkg_config, "--modversion"] + args
++    try:
++      version_string = subprocess.check_output(cmd).decode('utf-8')
++    except:
++      sys.stderr.write('Error from pkg-config.\n')
++      return 1
++    print(json.dumps(list(map(int, version_string.strip().split(".")))))
++    return 0
++
++
++  if options.libdir:
++    cmd = [options.pkg_config, "--variable=libdir"] + args
++    if options.debug:
++      sys.stderr.write('Running: %s\n' % cmd)
++    try:
++      libdir = subprocess.check_output(cmd).decode('utf-8')
++    except:
++      print("Error from pkg-config.")
++      return 1
++    sys.stdout.write(libdir.strip())
++    return 0
++
++  if options.dridriverdir:
++    cmd = [options.pkg_config, "--variable=dridriverdir"] + args
++    if options.debug:
++      sys.stderr.write('Running: %s\n' % cmd)
++    try:
++      dridriverdir = subprocess.check_output(cmd).decode('utf-8')
++    except:
++      print("Error from pkg-config.")
++      return 1
++    sys.stdout.write(dridriverdir.strip())
++    return
++
++  cmd = [options.pkg_config, "--cflags", "--libs"] + args
++  if options.debug:
++    sys.stderr.write('Running: %s\n' % ' '.join(cmd))
++
++  try:
++    flag_string = subprocess.check_output(cmd).decode('utf-8')
++  except:
++    sys.stderr.write('Could not run pkg-config.\n')
++    return 1
++
++  # For now just split on spaces to get the args out. This will break if
++  # pkgconfig returns quoted things with spaces in them, but that doesn't seem
++  # to happen in practice.
++  all_flags = flag_string.strip().split(' ')
++
++
++  sysroot = options.sysroot
++  if not sysroot:
++    sysroot = ''
++
++  includes = []
++  cflags = []
++  libs = []
++  lib_dirs = []
++
++  for flag in all_flags[:]:
++    if len(flag) == 0 or MatchesAnyRegexp(flag, strip_out):
++      continue
++
++    if flag[:2] == '-l':
++      libs.append(RewritePath(flag[2:], prefix, sysroot))
++    elif flag[:2] == '-L':
++      lib_dirs.append(RewritePath(flag[2:], prefix, sysroot))
++    elif flag[:2] == '-I':
++      includes.append(RewritePath(flag[2:], prefix, sysroot))
++    elif flag[:3] == '-Wl':
++      # Don't allow libraries to control ld flags.  These should be specified
++      # only in build files.
++      pass
++    elif flag == '-pthread':
++      # Many libs specify "-pthread" which we don't need since we always include
++      # this anyway. Removing it here prevents a bunch of duplicate inclusions
++      # on the command line.
++      pass
++    else:
++      cflags.append(flag)
++
++  # Output a GN array, the first one is the cflags, the second are the libs. The
++  # JSON formatter prints GN compatible lists when everything is a list of
++  # strings.
++  print(
++      json.dumps(
++          [sorted(includes),
++           sorted(cflags),
++           sorted(libs),
++           sorted(lib_dirs)]))
++  return 0
++
++
++if __name__ == '__main__':
++  sys.exit(main())
++
+diff --git a/gn/pkg_config.gni b/gn/pkg_config.gni
+new file mode 100644
+index 0000000000..9fc7fdc8e2
+--- /dev/null
++++ b/gn/pkg_config.gni
+@@ -0,0 +1,104 @@
++# Copyright 2013 The Chromium Authors
++# Use of this source code is governed by a BSD-style license that can be
++# found in the LICENSE file.
++
++# Defines a config specifying the result of running pkg-config for the given
++# packages. Put the package names you want to query in the "packages" variable
++# inside the template invocation.
++#
++# You can also add defines via the "defines" variable. This can be useful to
++# add this to the config to pass defines that the library expects to get by
++# users of its headers.
++#
++# Example:
++#   pkg_config("mything") {
++#     packages = [ "mything1", "mything2" ]
++#     defines = [ "ENABLE_AWESOME" ]
++#   }
++#
++# You can also use "extra args" to filter out results (see pkg-config.py):
++#   extra_args = [ "-v, "foo" ]
++# To ignore libs and ldflags (only cflags/defines will be set, which is useful
++# when doing manual dynamic linking), set:
++#   ignore_libs = true
++
++declare_args() {
++  # A pkg-config wrapper to call instead of trying to find and call the right
++  # pkg-config directly. Wrappers like this are common in cross-compilation
++  # environments.
++  # Leaving it blank defaults to searching PATH for 'pkg-config' and relying on
++  # the sysroot mechanism to find the right .pc files.
++  pkg_config = ""
++
++  # A optional pkg-config wrapper to use for tools built on the host.
++  host_pkg_config = ""
++}
++
++pkg_config_script = "//gn/pkg-config.py"
++
++# Define the args we pass to the pkg-config script for other build files that
++# need to invoke it manually.
++pkg_config_args = []
++
++common_pkg_config_args = []
++
++# Chrome OS uses custom pkg_config wrappers that require absolute paths as inputs.
++# See https://chromium-review.googlesource.com/c/chromium/src/+/6506002
++_pkg_config_requires_abs_path =
++    pkg_config != "" ||
++    (current_toolchain == host_toolchain && host_pkg_config != "")
++
++if (pkg_config != "") {
++  pkg_config_args += [
++    "-p",
++    pkg_config,
++  ]
++}
++
++if (host_pkg_config != "") {
++  host_pkg_config_args = [
++    "-p",
++    host_pkg_config,
++  ]
++} else {
++  host_pkg_config_args = pkg_config_args
++}
++
++template("pkg_config") {
++  assert(defined(invoker.packages),
++         "Variable |packages| must be defined to be a list in pkg_config.")
++  config(target_name) {
++    if (current_toolchain == host_toolchain) {
++      _cache_args = host_pkg_config_args + invoker.packages
++    } else {
++      _cache_args = pkg_config_args + invoker.packages
++    }
++    if (defined(invoker.extra_args)) {
++      _cache_args += invoker.extra_args
++    }
++
++    if (!defined(pkgresult)) {
++      _script_args = common_pkg_config_args + _cache_args
++      pkgresult = exec_script(pkg_config_script, _script_args, "json")
++    }
++    cflags = pkgresult[1]
++
++    foreach(_path, pkgresult[0]) {
++      # We want the system include paths to use -isystem instead of -I to
++      # suppress warnings in those headers.
++      cflags += [ "-isystem$_path" ]
++    }
++
++    if (!defined(invoker.ignore_libs) || !invoker.ignore_libs) {
++      libs = pkgresult[2]
++      lib_dirs = pkgresult[3]
++    }
++
++    forward_variables_from(invoker,
++                           [
++                             "defines",
++                             "visibility",
++                           ])
++  }
++}
++
