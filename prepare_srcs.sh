@@ -7,15 +7,10 @@ apply_patch_with_msg() {
   done
 }
 
-tar xvf skia.tar.gz
-rm skia.tar.gz
-
 cd skia
 
 apply_patch_with_msg \
     0001-support-freya.patch
-
-patch -R -Nbp1 -i "${srcdir}/0007-Reland-Make-SkPath-immutable-on-GN-build.patch"
 
 cd ..
 
